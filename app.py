@@ -11,8 +11,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -29,11 +27,19 @@ def run_indrive(phone, chat_id):
     opts.add_argument("--disable-gpu")
     opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
     
-    # تحديد مسار Chromium في Railway
-    if os.path.exists("/usr/bin/chromium"):
-        opts.binary_location = "/usr/bin/chromium"
-    elif os.path.exists("/usr/bin/chromium-browser"):
-        opts.binary_location = "/usr/bin/chromium-browser"
+    # البحث عن مسار الكروم في Railway
+    possible_chrome_paths = [
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome"
+    ]
+    
+    for path in possible_chrome_paths:
+        if os.path.exists(path):
+            opts.binary_location = path
+            logging.info(f"Found Chrome at: {path}")
+            break
     
     driver = None
     loop = asyncio.new_event_loop()
@@ -51,15 +57,16 @@ def run_indrive(phone, chat_id):
             except: pass
 
     try:
+        # محاولة تشغيل التعريف المثبت في النظام مباشرة
         try:
-            # محاولة استخدام التعريف المثبت في النظام أولاً
             if os.path.exists("/usr/bin/chromedriver"):
                 srv = Service("/usr/bin/chromedriver")
+                driver = webdriver.Chrome(service=srv, options=opts)
             else:
-                srv = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-            driver = webdriver.Chrome(service=srv, options=opts)
+                driver = webdriver.Chrome(options=opts)
         except Exception as e:
             logging.error(f"Driver setup failed: {e}")
+            # محاولة أخيرة بدون أي إعدادات خاصة
             driver = webdriver.Chrome(options=opts)
 
         driver.get("https://couriers.indrive.com/register")
@@ -117,15 +124,8 @@ async def handle(message: types.Message):
         time.sleep(1)
 
 async def main():
-    await dp.start_polling(bot)
-
-if __name__ == '__main__':
-    asyncio.run(main())
-    for n in nums:
-        threading.Thread(target=run_indrive, args=(n, message.chat.id)).start()
-        time.sleep(1)
-
-async def main():
+    # حذف الويب هوك لتجنب التعارض (Conflict)
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
