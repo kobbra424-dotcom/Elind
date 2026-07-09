@@ -26,10 +26,14 @@ def run_indrive(phone, chat_id):
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
     opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
     
-    if os.path.exists("/usr/bin/google-chrome"):
-        opts.binary_location = "/usr/bin/google-chrome"
+    # تحديد مسار Chromium في Railway
+    if os.path.exists("/usr/bin/chromium"):
+        opts.binary_location = "/usr/bin/chromium"
+    elif os.path.exists("/usr/bin/chromium-browser"):
+        opts.binary_location = "/usr/bin/chromium-browser"
     
     driver = None
     loop = asyncio.new_event_loop()
@@ -48,9 +52,14 @@ def run_indrive(phone, chat_id):
 
     try:
         try:
-            srv = Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
+            # محاولة استخدام التعريف المثبت في النظام أولاً
+            if os.path.exists("/usr/bin/chromedriver"):
+                srv = Service("/usr/bin/chromedriver")
+            else:
+                srv = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
             driver = webdriver.Chrome(service=srv, options=opts)
-        except:
+        except Exception as e:
+            logging.error(f"Driver setup failed: {e}")
             driver = webdriver.Chrome(options=opts)
 
         driver.get("https://couriers.indrive.com/register")
@@ -112,4 +121,12 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-    
+    for n in nums:
+        threading.Thread(target=run_indrive, args=(n, message.chat.id)).start()
+        time.sleep(1)
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    asyncio.run(main())
