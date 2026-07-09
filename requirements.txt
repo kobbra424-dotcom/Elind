@@ -1,5 +1,0 @@
-aiogram==3.10.0
-selenium==4.22.0
-webdriver-manager==4.0.1
-urllib3<2.0
-asyncio
